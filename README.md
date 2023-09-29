@@ -6,9 +6,9 @@ Desenvolvendo um controle remoto.
 
 ### Integrantes
 
-- Nicolas Enzo Yassuda
-- Pedro Henrique Rizo Colpas
-
+- Nicolas Enzo Yassuda;
+- Pedro Henrique Rizo Colpas;
+- Kevin Nagayuki Shinohara.
 ### Ideia
 
 Fazer um controle inspirado no controle do Super Nintendo(SNES)
