@@ -6,48 +6,40 @@ Desenvolvendo um controle remoto.
 
 ### Integrantes
 
-- Nome1
-- Nome2
+- Nicolas Enzo Yassuda
+- Pedro Henrique Rizo Colpas
 
 ### Ideia
 
-<!--  Descreva aqui em poucas palavras qual a ideia do seu controle. Se ele vai ser de jogo ou de aplicação -->
+Fazer um controle inspirado no controle do Super Nintendo(SNES)
 
 ### Nome
 
-<!-- De um nome ao seu controle! -->
+NP Control
 
 ### Usuários 
 
-<!-- Descreva aqui quem seriam os possíveis usuários deste controle. -->
+Amantes de RetroGames
 
 ### Software/Jogo 
 
-<!-- Qual software que seu controle vai controlar? -->
+Iriamos controlar um emulador comum de jogos.
 
 ### Jornada do usuários (3 pts)
-
-<!-- Descreva ao menos duas jornadas de usuários distintos, é para caprichar! -->
+Roberto é um adulto de 26 anos, que em sua infacia sempre gostou muito de jogar video-games, porém ele sentia uma vibe nostalgica sempre que via uma foto de seu antigo SNES, mas ao mesmo tempo hoje em dia ele quer jogar jogos da atualidade ai que entra o NP Control, o NP control possibilita a compatibilidade com alguns jogos novos, claro com suas devidas Limitações mas trazendo aquela experiência nostalgica. Com um ar de modernismo.
 
 ### Comandos/ Feedbacks (2 pts)
 
-<!-- 
-Quais são os comandos/ operacões possíveis do seu controle?
-
-Quais os feedbacks que seu controle vai fornecer ao usuário?
--->
+Irá enviar informações de movimento como cima, baixo, esquerda, direita e outras informações de teclas auxiliares para ações no jogo como X,Y,B,A.
+E um potenciometro para aumentar e diminuir o volume. E a cor para avisar que o controle está ligado.
 
 ## In/OUT (3 pts)
 
-<!--
-Para cada Comando/ Feedback do seu controle, associe qual sensores/ atuadores pretende utilizar? Faca em formato de lista, exemplo:
-
-- Avanca música: Push button amarelo
-- Volume da música: Fita de LED indicando potência do som
--->
+10 botoes(Entradas Digitais)
+Saida Tres leds 
+1 botão de ligar e desligar(Entrada e Saida)
+Potenciometro
 
 ### Design (2 pts)
+![image](https://github.com/insper-classroom/23b-emb-proj-barbaro-embarcados/assets/92542916/b5ee021c-26e6-4f2d-aff3-a412f48afb44)
 
-<!--
-Faca um esboco de como seria esse controle (vai ter uma etapa que terão que detalhar melhor isso).
--->
