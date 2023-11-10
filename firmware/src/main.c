@@ -14,11 +14,15 @@
 /************************************************************************/
 
 // LEDs
-#define LED_PIO      PIOC
-#define LED_PIO_ID   ID_PIOC
-#define LED_IDX      8
+#define LED_PIO      PIOD
+#define LED_PIO_ID   ID_PIOD
+#define LED_IDX      20
 #define LED_IDX_MASK (1 << LED_IDX)
 
+#define LED2_PIO      PIOD
+#define LED2_PIO_ID   ID_PIOD
+#define LED2_IDX      27
+#define LED2_IDX_MASK (1 << LED2_IDX)
 
 // Botão
 #define BUT2_PIO      PIOC
@@ -94,6 +98,7 @@ extern void xPortSysTickHandler(void);
 /************************************************************************/
 
 /* Called if stack overflow during execution */
+
 extern void vApplicationStackOverflowHook(xTaskHandle *pxTask,
 signed char *pcTaskName) {
 	printf("stack overflow %x %s\r\n", pxTask, (portCHAR *)pcTaskName);
@@ -122,7 +127,7 @@ extern void vApplicationMallocFailedHook(void) {
 	/* Force an assert. */
 	configASSERT( ( volatile void * ) NULL );
 }
-
+SemaphoreHandle_t xSemaphore;
 /************************************************************************/
 /* handlers / callbacks                                                 */
 /************************************************************************/
@@ -136,6 +141,32 @@ static void AFEC_pot_callback(void) {
 /************************************************************************/
 /* funcoes                                                              */
 /************************************************************************/
+void set_ledConecta(void);
+
+void set_ledConecta(void){
+	pio_set(LED2_PIO, LED2_IDX_MASK);
+	pio_set(LED_PIO, LED_IDX_MASK);
+}
+
+void clear_ledConecta(void);
+
+void clear_ledConecta(void){
+	pio_clear(LED2_PIO, LED2_IDX_MASK);
+	
+}
+void led_wait(int freq);
+
+void led_wait(int freq){
+	if(xSemaphoreTake(xSemaphore, 500 / portTICK_PERIOD_MS)){
+		set_ledConecta();
+	}else{
+		set_ledConecta();
+		delay_ms(freq);
+		clear_ledConecta();
+		delay_ms(freq);
+	}
+
+}
 static void config_AFEC_pot(Afec *afec, uint32_t afec_id, uint32_t afec_channel,
                             afec_callback_t callback) {
   /*************************************
@@ -189,13 +220,15 @@ void io_init(void) {
 
 	// Ativa PIOs
 	pmc_enable_periph_clk(LED_PIO_ID);
+	pmc_enable_periph_clk(LED2_PIO_ID);
 	pmc_enable_periph_clk(BUT2_PIO_ID);
 	pmc_enable_periph_clk(BUT3_PIO_ID);
 	pmc_enable_periph_clk(BUT4_PIO_ID);
 	pmc_enable_periph_clk(BUT5_PIO_ID);
 
 	// Configura Pinos
-	pio_configure(LED_PIO, PIO_OUTPUT_0, LED_IDX_MASK, PIO_DEFAULT | PIO_DEBOUNCE);
+	pio_configure(LED_PIO, PIO_OUTPUT_0, LED_IDX_MASK,  PIO_DEFAULT | PIO_DEBOUNCE);
+	pio_configure(LED2_PIO, PIO_OUTPUT_0, LED2_IDX_MASK, PIO_DEFAULT | PIO_DEBOUNCE);
 	pio_configure(BUT2_PIO, PIO_INPUT, BUT2_IDX_MASK, PIO_PULLUP);
 	pio_configure(BUT3_PIO, PIO_INPUT, BUT3_IDX_MASK, PIO_PULLUP);
 	pio_configure(BUT4_PIO, PIO_INPUT, BUT4_IDX_MASK, PIO_PULLUP);
@@ -301,6 +334,7 @@ void task_bluetooth(void) {
 	printf("Task Bluetooth started \n");
 
 	printf("Inicializando HC05 \n");
+	pio_clear(LED_PIO, LED_IDX_MASK);
 	config_usart0();
 	hc05_init();
 	config_AFEC_pot(AFEC_POT, AFEC_POT_ID, AFEC_POT_CHANNEL, AFEC_pot_callback);
@@ -327,49 +361,67 @@ void task_bluetooth(void) {
     char start_of_packet = '<';
     char end_of_packet = '>';
     char separator = ',';
+	int handshake = 1;
+	char handshake_msg;
 	adcData adc;
 	float value;
 	char str[128];
 	// Task não deve retornar.
+
 	while(1) {
-		char message[128];
-		int message_len = 0;
-		if(xQueueReceive(xQueueADC, &adc, portMAX_DELAY) == pdPASS){
-			value = ((float)adc.value/(float)4000);
+		if(handshake){
+			usart_write(USART_COM,'h');
+			while(!usart_is_tx_ready(USART_COM)) {
+				vTaskDelay(1 / portTICK_PERIOD_MS);
+			}
+			led_wait(50);
+			if(usart_read(USART_COM,&handshake_msg))
+			if(handshake_msg=='h'){
+				handshake=0;
+				xSemaphoreGiveFromISR(xSemaphore, 0);
+				printf("handshake recebido com sucesso");
+			}
 		}
-		// atualiza valor do botão
-		sprintf(str, "%.2f", value);
-		message[message_len++] = start_of_packet;
-		message[message_len++] = (pio_get(BUT2_PIO, PIO_INPUT, BUT2_IDX_MASK) == 0) ? 'L' : '0';
-		message[message_len++] = separator;
+		else{
+			set_ledConecta();
+			if(xQueueReceive(xQueueADC, &adc, portMAX_DELAY) == pdPASS){
+				value = ((float)adc.value/(float)4000);
+			}
+			char message[128];
+			int message_len = 0;
+			// atualiza valor do botão
+			sprintf(str, "%.2f", value);
+			message[message_len++] = start_of_packet;
+			message[message_len++] = (pio_get(BUT2_PIO, PIO_INPUT, BUT2_IDX_MASK) == 0) ? 'L' : '0';
+			message[message_len++] = separator;
 
-		
-        message[message_len++] = (pio_get(BUT3_PIO, PIO_INPUT, BUT3_IDX_MASK) == 0) ? 'D' : '0';
-        message[message_len++] = separator;
+			
+			message[message_len++] = (pio_get(BUT3_PIO, PIO_INPUT, BUT3_IDX_MASK) == 0) ? 'D' : '0';
+			message[message_len++] = separator;
 
-		
-        message[message_len++] = (pio_get(BUT4_PIO, PIO_INPUT, BUT4_IDX_MASK) == 0) ? 'U' : '0';
-		message[message_len++] = separator;
-		
-		message[message_len++] = (pio_get(BUT5_PIO, PIO_INPUT, BUT5_IDX_MASK) == 0) ? 'R' : '0';
-		message[message_len++] = separator;
-		message[message_len++] = str[0];
-		message[message_len++] = str[1];
-		message[message_len++] = str[2];
-		message[message_len++] = str[3];
-		message[message_len++] = end_of_packet;
-		message[message_len] = '\0';
-
-		while(!usart_is_tx_ready(USART_COM)) {
+			
+			message[message_len++] = (pio_get(BUT4_PIO, PIO_INPUT, BUT4_IDX_MASK) == 0) ? 'U' : '0';
+			message[message_len++] = separator;
+			
+			message[message_len++] = (pio_get(BUT5_PIO, PIO_INPUT, BUT5_IDX_MASK) == 0) ? 'R' : '0';
+			message[message_len++] = separator;
+			message[message_len++] = str[0];
+			message[message_len++] = str[1];
+			message[message_len++] = str[2];
+			message[message_len++] = str[3];
+			message[message_len++] = end_of_packet;
+			message[message_len] = '\0';
+			while(!usart_is_tx_ready(USART_COM)) {
+				vTaskDelay(1 / portTICK_PERIOD_MS);
+			}
+			usart_put_string(USART_COM, message);
+			// envia fim de pacote
+			while(!usart_is_tx_ready(USART_COM)) {
+				vTaskDelay(1 / portTICK_PERIOD_MS);
+			}
+			// dorme por 500 ms
 			vTaskDelay(1 / portTICK_PERIOD_MS);
 		}
-		usart_put_string(USART_COM, message);
-		// envia fim de pacote
-		while(!usart_is_tx_ready(USART_COM)) {
-			vTaskDelay(1 / portTICK_PERIOD_MS);
-		}
-		// dorme por 500 ms
-		vTaskDelay(1 / portTICK_PERIOD_MS);
 	}
 }
 
@@ -388,7 +440,12 @@ int main(void) {
 	printf("falha em criar a queue xQueueADC \n");
 	/* Create task to make led blink */
 	xTaskCreate(task_bluetooth, "BLT", TASK_BLUETOOTH_STACK_SIZE, NULL,	TASK_BLUETOOTH_STACK_PRIORITY, NULL);
+   // cria semáforo binário
+   xSemaphore = xSemaphoreCreateBinary();
 
+   // verifica se semáforo foi criado corretamente
+   if (xSemaphore == NULL)
+   printf("falha em criar o semaforo \n");
 	/* Start the scheduler. */
 	vTaskStartScheduler();
 
